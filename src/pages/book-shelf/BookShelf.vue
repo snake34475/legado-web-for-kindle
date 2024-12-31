@@ -4,8 +4,15 @@
       <h1 class="title">书架</h1>
       <label for="server-url">
         阅读地址
-        <input id="server-url" type="text" placeholder="请输入阅读地址" v-model="state.config.serverUrl">
-        <button class="custom-button" @click="queryBookShelf">获取书架</button>
+        <input
+          id="server-url"
+          type="text"
+          placeholder="请输入阅读地址"
+          v-model="state.config.serverUrl"
+        />
+        <button class="custom-button" @click="queryBookShelfDebounce">
+          获取书架
+        </button>
       </label>
       <div class="hint">
         <span>请输入阅读APP "Web 服务" 提示的完整地址</span>
@@ -13,7 +20,7 @@
     </div>
     <p v-if="bookShelfLoading">加载中...</p>
     <template v-for="book in bookList">
-      <Book :book="book" @click="handleBookClick"/>
+      <Book :book="book" @click="handleBookClick" />
     </template>
     <div class="page-control">
       <button class="custom-button" @click="handleTop">回到顶部</button>
@@ -24,21 +31,21 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { BookInfo } from '../../api/types.ts';
-import { getBookshelf } from '../../api';
-import Book from './components/Book.vue';
-import { saveConfig, setCurrentReadBook, state } from '../../store';
-import router from '../../router/router.ts';
-import { getCover } from '../../utils';
-import { useToggle } from '@vueuse/core';
+import { onMounted, ref } from "vue";
+import { BookInfo } from "../../api/types.ts";
+import { getBookshelf } from "../../api";
+import Book from "./components/Book.vue";
+import { saveConfig, setCurrentReadBook, state } from "../../store";
+import router from "../../router/router.ts";
+import { getCover } from "../../utils";
+import { useToggle, useDebounceFn } from "@vueuse/core";
 
 const bookShelfRef = ref<HTMLDivElement>();
 const bookList = ref<BookInfo[]>([]);
 
 const handleBookClick = (res: BookInfo) => {
   setCurrentReadBook(res);
-  router.push('/book-content');
+  router.push("/book-content");
 };
 const handleTop = () => {
   if (bookShelfRef.value) {
@@ -56,15 +63,22 @@ const handleDown = () => {
   }
 };
 const [bookShelfLoading, toggleBookShelfLoading] = useToggle();
+
+const queryBookShelfDebounce = useDebounceFn(
+  () => queryBookShelf(),
+  300
+);
 const queryBookShelf = async () => {
+  if (bookShelfLoading.value) return;
   try {
     saveConfig();
     toggleBookShelfLoading(true);
     bookList.value = [];
     const data = await getBookshelf();
-    bookList.value = data.map(i => ({
+    bookList.value = data.map((i) => ({
       ...i,
-      coverUrl: getCover(i.coverUrl),
+      // 有http地址就取源地址
+      coverUrl: i.coverUrl.startsWith('http')? i.coverUrl : getCover(i.coverUrl),
     }));
   } finally {
     toggleBookShelfLoading(false);
@@ -105,7 +119,6 @@ onMounted(async () => {
       color: #666;
     }
   }
-
 
   .page-control {
     position: fixed;
