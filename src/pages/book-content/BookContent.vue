@@ -210,7 +210,7 @@ const queryContent = async (index: number) => {
       durChapterTitle: currentChapterName.value,
     });
 
-    const cacheContent = currentBookContentList.value.find((i) => i.index === index)?.content
+    const cacheContent = (currentBookContentList.value || []).find((i) => i.index === index)?.content || ''
 
     if (cacheContent) {
       bookContentStr.value = cacheContent
